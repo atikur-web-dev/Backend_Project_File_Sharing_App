@@ -1,7 +1,7 @@
-import {log} from 'console';
-import app from './App.js';
-import {config} from './src/config/config.js';
+import { log } from 'console';
+import app from './App.ts';
+import { config } from './src/config/config.ts'; // path check
 
-app.listen(3000, () => {
-  log('Server is running on http://localhost:3000');
+app.listen(config.port, () => {
+  log(`Server is running on http://localhost:${config.port}`);
 });
