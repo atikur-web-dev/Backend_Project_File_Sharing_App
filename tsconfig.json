@@ -27,6 +27,9 @@
     "emitDeclarationOnly": true,
     "allowImportingTsExtensions": true, 
 
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+
 
     // Style Options
     // "noImplicitReturns": true,
