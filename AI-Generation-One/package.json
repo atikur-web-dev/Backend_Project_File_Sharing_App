@@ -7,19 +7,26 @@
     "dev": "nodemon server.ts",
     "format:check": "npx prettier . --check",
     "format:fix": "npx prettier . --write",
+    "lint:check": "eslint .",
+    "lint:fix": "eslint . --fix",
     "prepare": "husky"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/express": "^5.0.6",
     "@types/node": "^25.9.2",
+    "@typescript-eslint/eslint-plugin": "^8.61.0",
+    "@typescript-eslint/parser": "^8.61.0",
     "eslint": "^10.4.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.6",
     "globals": "^17.6.0",
     "husky": "^9.1.7",
+    "jiti": "^2.7.0",
     "lint-staged": "^17.0.7",
     "nodemon": "^3.1.14",
     "prettier": "3.8.4",
@@ -32,7 +39,11 @@
     "dotenv": "^17.4.2"
   },
   "lint-staged": {
-    "*.{js,ts,json,md}": [
+    "*.{js,ts}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
       "prettier --write"
     ]
   }
