@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon server.ts"
+    "dev": "nodemon server.ts",
+    "format:check": "npx prettier . --check",
+    "format:fix": "npx prettier . --write",
+    "prepare": "husky"
   },
   "keywords": [],
   "author": "",
@@ -13,12 +16,20 @@
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "^25.9.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.7",
     "nodemon": "^3.1.14",
+    "prettier": "3.8.4",
     "ts-node": "^10.9.2",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3"
   },
   "dependencies": {
     "dotenv": "^17.4.2"
+  },
+  "lint-staged": {
+    "*.{js,ts,json,md}": [
+      "prettier --write"
+    ]
   }
 }
