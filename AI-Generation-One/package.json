@@ -8,7 +8,10 @@
     "format:fix": "npx prettier . --write",
     "lint:check": "eslint .",
     "lint:fix": "eslint . --fix",
-    "prepare": "husky"
+    "prepare": "husky",
+    "prisma:gen": "prisma generate",
+    "prisma:pull": "prisma db pull",
+    "prisma:migrate": "prisma migrate dev"
   },
   "keywords": [],
   "author": "",

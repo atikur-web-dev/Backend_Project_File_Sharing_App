@@ -1,8 +1,19 @@
 // src/server.ts
 import { app } from './app.js';
+import dotenv from 'dotenv';
 
-const PORT = 8000;
+
+dotenv.config();
+
+const PORT = process.env.PORT || 8000;
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('Shutting down gracefully...');
+  process.exit(0);
+});
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server is running on http://localhost:${PORT}`);
+  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Health check: http://localhost:${PORT}/health`);
 });
