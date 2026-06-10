@@ -8,6 +8,7 @@
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
     "module": "nodenext",
+    "moduleResolution": "nodenext",  // Fixed: must be 'nodenext' when module is 'nodenext'
     "target": "esnext",
     "types": [],
     // For nodejs:
@@ -33,7 +34,6 @@
     // "noPropertyAccessFromIndexSignature": true,
 
     // Recommended Options
-
     "strict": true,
     "jsx": "react-jsx",
     "verbatimModuleSyntax": true,
@@ -41,7 +41,6 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
-    "moduleResolution": "bundler",
     "esModuleInterop": true,
     "ignoreDeprecations": "6.0"
   }
