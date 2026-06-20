@@ -1,29 +1,44 @@
+// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+enum LoginType {
+  google
+  github
+  email
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now()) @map("createdAt")
-  posts     Post[]
+  id           String    @id @default(uuid())
+  googleId     String    @unique
+  name         String
+  email        String    @unique
+  picture      String?
+  loginType    LoginType @default(google)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  
 
-  @@map("users")
+  sessions     Session[]
 }
 
-model Post {
-  id        Int      @id @default(autoincrement())
-  title     String
-  content   String?
-  authorId  Int      @map("authorId")
-  createdAt DateTime @default(now()) @map("createdAt")
-  author    User     @relation(fields: [authorId], references: [id])
 
-  @@map("posts")
+model Session {
+  id           String   @id @default(uuid())
+  userId       String
+  refreshToken String   @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  
+  // সম্পর্ক
+  user         User     @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
 }
