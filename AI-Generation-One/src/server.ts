@@ -7,7 +7,7 @@ import { logger } from './config/logger.js';
 const { PORT } = config;
 
 // Prisma কানেকশন চেক (ঐচ্ছিক)
-import { PrismaClient } from '@prisma/client';
+import PrismaClient from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function startServer() {
