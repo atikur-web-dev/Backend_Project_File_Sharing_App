@@ -8,13 +8,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
+// লগইন টাইপ (Google, GitHub, Email)
 enum LoginType {
   google
   github
   email
 }
 
+// ইউজার মডেল
 model User {
   id           String    @id @default(uuid())
   googleId     String    @unique
@@ -25,11 +26,11 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   
-
+  // সম্পর্ক (relations)
   sessions     Session[]
 }
 
-
+// সেশন মডেল (Refresh Token স্টোরের জন্য)
 model Session {
   id           String   @id @default(uuid())
   userId       String

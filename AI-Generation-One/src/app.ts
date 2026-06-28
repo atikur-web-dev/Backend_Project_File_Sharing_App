@@ -1,11 +1,12 @@
 // src/app.ts
-import express, { Application, NextFunction, Request, Response } from 'express';
+import express, { type Application, type NextFunction, type Request, type Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import { logger } from './config/logger.js';
 import { config } from './config/index.js';
+import { authRouter } from './routes/auth.route.js';
 
 const app: Application = express();
 
@@ -50,6 +51,8 @@ app.use((req: Request, res: Response) => {
     message: `Route not found: ${req.method} ${req.originalUrl}`,
   });
 });
+
+app.use('/api/v1', authRouter);
 
 // =============== গ্লোবাল এরর হ্যান্ডলার ===============
 
