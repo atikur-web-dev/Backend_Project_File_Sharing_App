@@ -1,4 +1,3 @@
-// src/zodSchema/env.validation.ts
 import z from 'zod';
 
 export const envSchema = z.object({
@@ -7,8 +6,13 @@ export const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   JWT_SECRET: z.string().min(8),
   
-  // নতুন যোগ করো
+  // Google OAuth
   GOOGLE_CLIENT_ID: z.string().min(1),
   GOOGLE_CLIENT_SECRET: z.string().min(1),
   GOOGLE_REDIRECT_URL: z.string().url(),
+  
+  // GitHub OAuth
+  GITHUB_CLIENT_ID: z.string().min(1),
+  GITHUB_CLIENT_SECRET: z.string().min(1),
+  GITHUB_REDIRECT_URL: z.string().url(),
 });

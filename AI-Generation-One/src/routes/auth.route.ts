@@ -1,8 +1,9 @@
-// src/routes/auth.route.ts
 import { Router } from 'express';
 import {
   googleLogin,
   googleCallback,
+  githubLogin,      // নতুন
+  githubCallback,   // নতুন
   logout,
   refreshToken,
   getMe,
@@ -11,13 +12,17 @@ import { authenticate } from '../middleware/auth.middleware.js';
 
 const router = Router();
 
-// পাবলিক রাউট
+// Google Routes
 router.get('/auth/google/login', googleLogin);
 router.get('/auth/google/callback', googleCallback);
+
+// GitHub Routes (নতুন)
+router.get('/auth/github/login', githubLogin);
+router.get('/auth/github/callback', githubCallback);
+
+// Common Routes
 router.post('/auth/refresh', refreshToken);
 router.post('/auth/logout', logout);
-
-// প্রটেক্টেড রাউট (লগইন লাগবে)
 router.get('/auth/me', authenticate, getMe);
 
 export const authRouter = router;

@@ -115,3 +115,37 @@ export const getMe = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: 'Failed to get user info' });
   }
 };
+// ============ GitHub Controllers ============
+
+export const githubLogin = async (req: Request, res: Response) => {
+  try {
+    const url = getGitHubAuthUrl();
+    res.redirect(url);
+  } catch (error) {
+    logger.error('GitHub login error:', error);
+    res.status(500).json({ success: false, message: 'GitHub login failed' });
+  }
+};
+
+export const githubCallback = async (req: Request, res: Response) => {
+  try {
+    const { code } = req.query;
+    
+    if (!code || typeof code !== 'string') {
+      return res.status(400).json({ success: false, message: 'Authorization code missing' });
+    }
+
+    const { accessToken, refreshToken, user } = await handleGitHubCallback(code);
+    
+    setRefreshTokenCookie(res, refreshToken);
+    
+    res.json({
+      success: true,
+      accessToken,
+      user,
+    });
+  } catch (error) {
+    logger.error('GitHub callback error:', error);
+    res.status(500).json({ success: false, message: 'GitHub authentication failed' });
+  }
+};

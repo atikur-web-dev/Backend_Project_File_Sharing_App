@@ -140,3 +140,102 @@ export const rotateRefreshToken = async (oldRefreshToken: string): Promise<Sessi
     user,
   };
 };
+
+// ============ GitHub Auth ============
+
+export const getGitHubAuthUrl = (): string => {
+  const params = new URLSearchParams({
+    client_id: config.GITHUB_CLIENT_ID,
+    redirect_uri: config.GITHUB_REDIRECT_URL,
+    scope: 'user:email',
+    allow_signup: 'true',
+  });
+  return `https://github.com/login/oauth/authorize?${params.toString()}`;
+};
+
+export const handleGitHubCallback = async (code: string): Promise<SessionData> => {
+  // ১. কোড থেকে Access Token নাও
+  const tokenResponse = await axios.post(
+    'https://github.com/login/oauth/access_token',
+    {
+      client_id: config.GITHUB_CLIENT_ID,
+      client_secret: config.GITHUB_CLIENT_SECRET,
+      code,
+      redirect_uri: config.GITHUB_REDIRECT_URL,
+    },
+    {
+      headers: { Accept: 'application/json' },
+    }
+  );
+
+  const accessToken = tokenResponse.data.access_token;
+  if (!accessToken) throw new Error('Failed to get GitHub access token');
+
+  // ২. GitHub থেকে ইউজার তথ্য নাও
+  const userResponse = await axios.get('https://api.github.com/user', {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json',
+    },
+  });
+
+  const githubUser = userResponse.data;
+  
+  // ৩. ইউজারের ইমেইল নাও (প্রাইভ থাকতে পারে)
+  let email = githubUser.email;
+  if (!email) {
+    const emailResponse = await axios.get('https://api.github.com/user/emails', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/json',
+      },
+    });
+    const primaryEmail = emailResponse.data.find((e: any) => e.primary);
+    email = primaryEmail?.email || `${githubUser.id}@github.user`;
+  }
+
+  if (!email) throw new Error('GitHub email not found');
+
+  // ৪. ইউজার তৈরি/আপডেট
+  const user = await prisma.user.upsert({
+    where: { email },
+    update: {
+      name: githubUser.name || githubUser.login || '',
+      picture: githubUser.avatar_url || '',
+      githubId: String(githubUser.id),
+    },
+    create: {
+      email,
+      name: githubUser.name || githubUser.login || '',
+      picture: githubUser.avatar_url || '',
+      githubId: String(githubUser.id),
+      loginType: 'github',
+    },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      picture: true,
+    },
+  });
+
+  // ৫. সেশন তৈরি করো
+  const refreshToken = generateRefreshToken();
+  const hashedRefreshToken = hashToken(refreshToken);
+  
+  await prisma.session.create({
+    data: {
+      userId: user.id,
+      refreshToken: hashedRefreshToken,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    },
+  });
+
+  const accessTokenJwt = generateAccessToken(user.id);
+
+  return {
+    accessToken: accessTokenJwt,
+    refreshToken,
+    user,
+  };
+};
