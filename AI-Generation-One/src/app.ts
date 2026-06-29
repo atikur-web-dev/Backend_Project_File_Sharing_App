@@ -8,6 +8,7 @@ import { logger } from './config/logger.js';
 import { config } from './config/index.js';
 import { authRouter } from './routes/auth.route.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { healthCheck } from './controllers/health.controller.js';
 
 const app: Application = express();
 
@@ -17,10 +18,16 @@ const app: Application = express();
 app.use(helmet());
 
 // 2. CORS - ক্রস-অরিজিন রিকোয়েস্ট অনুমতি
-app.use(cors({
-  origin: config.NODE_ENV === 'development' ? '*' : process.env.CLIENT_URL,
+const corsOptions = {
+  origin: config.NODE_ENV === 'production'
+    ? process.env.CLIENT_URL || 'https://yourdomain.com'
+    : '*',
   credentials: true,
-}));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
 
 // 3. কুকি পার্সার
 app.use(cookieParser());
@@ -54,6 +61,7 @@ app.use((req: Request, res: Response) => {
 });
 
 app.use('/api/v1', authRouter);
+app.get('/health', healthCheck);
 
 // =============== গ্লোবাল এরর হ্যান্ডলার ===============
 

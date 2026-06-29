@@ -1,21 +1,19 @@
-// src/config/logger.ts
 import winston from 'winston';
-import { env } from './env.js';
+import { config } from './index.js';
 
-const { combine, timestamp, printf, colorize, json } = winston.format;
+const { combine, timestamp, printf, colorize, json, errors } = winston.format;
 
-// কাস্টম ফরম্যাট (ডেভেলপমেন্টে রঙিন, প্রোডাকশনে JSON)
 const myFormat = combine(
+  errors({ stack: true }),
   timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-  env.NODE_ENV === 'production' 
-    ? json() 
-    : combine(colorize(), printf(({ level, message, timestamp }) => {
-        return `${timestamp} ${level}: ${message}`;
+  config.NODE_ENV === 'production'
+    ? json()
+    : combine(colorize(), printf(({ timestamp, level, message, stack }) => {
+        return `${timestamp} ${level}: ${message}${stack ? `\n${stack}` : ''}`;
       }))
 );
 
-// ট্রান্সপোর্ট (কোথায় লগ লেখা হবে)
-const transports = env.NODE_ENV === 'production'
+const transports = config.NODE_ENV === 'production'
   ? [
       new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
       new winston.transports.File({ filename: 'logs/combined.log' }),
@@ -23,7 +21,7 @@ const transports = env.NODE_ENV === 'production'
   : [new winston.transports.Console()];
 
 export const logger = winston.createLogger({
-  level: env.NODE_ENV === 'production' ? 'info' : 'debug',
+  level: config.NODE_ENV === 'production' ? 'info' : 'debug',
   format: myFormat,
   transports,
 });
