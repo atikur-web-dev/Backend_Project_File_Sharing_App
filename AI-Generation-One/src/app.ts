@@ -7,6 +7,7 @@ import morgan from 'morgan';
 import { logger } from './config/logger.js';
 import { config } from './config/index.js';
 import { authRouter } from './routes/auth.route.js';
+import { errorHandler } from './middleware/errorHandler.js';
 
 const app: Application = express();
 
@@ -64,5 +65,9 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     message: config.NODE_ENV === 'development' ? err.message : 'Internal server error',
   });
 });
+
+
+app.use(errorHandler);
+
 
 export { app };
