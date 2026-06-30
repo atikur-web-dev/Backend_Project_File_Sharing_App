@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createProject } from '../controllers/project.controller.js';
+import { createProject, generateVideo } from '../controllers/project.controller.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { upload } from '../middleware/upload.middleware.js';
 
@@ -14,5 +14,8 @@ router.post(
   ]),
   createProject
 );
+
+// নতুন Route
+router.post('/projects/generate-video', authenticate, generateVideo);
 
 export const projectRouter = router;

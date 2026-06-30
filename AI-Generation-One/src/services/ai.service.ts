@@ -96,3 +96,99 @@ export const generateImageWithAI = async (
     throw new Error('Failed to generate image');
   }
 };
+
+// ============ Video Generation ============
+
+import axios from 'axios';
+import { mkdirSync } from 'fs';
+import path from 'path';
+import { cloudinary } from '../lib/cloudinary.js';
+import { logger } from '../config/logger.js';
+import type { Project } from '@prisma/client';
+
+export const generateVideoWithAI = async (project: Project): Promise<string> => {
+  try {
+    // 1. Build prompt
+    const prompt = `Make the person showcase the product which is ${project.productName}. ${project.productDescription || ''}`;
+    
+    // 2. Get the generated image
+    if (!project.generatedImage) {
+      throw new Error('Generated image not found. Please generate image first.');
+    }
+
+    // 3. Download the image
+    const imageResponse = await axios.get(project.generatedImage, {
+      responseType: 'arraybuffer',
+    });
+    const imageBuffer = Buffer.from(imageResponse.data);
+
+    // 4. Start video generation
+    let operation = await ai.models.generateVideos({
+      model: 'veo-3.1-generate-preview',
+      prompt,
+      image: {
+        imageBytes: imageBuffer.toString('base64'),
+        mimeType: 'image/png',
+      },
+      config: {
+        aspectRatio: project.aspectRatio || '9:16',
+        numberOfVideos: 1,
+        resolution: '720p',
+      },
+    });
+
+    // 5. Poll for completion (max 5 minutes)
+    const maxAttempts = 30; // 30 * 10s = 5 minutes
+    let attempts = 0;
+    
+    while (!operation.done && attempts < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, 10000));
+      operation = await ai.operations.getVideosOperation({
+        operation: operation,
+      });
+      attempts++;
+      logger.info(`⏳ Video generation progress: ${attempts * 10}s`);
+    }
+
+    if (!operation.done) {
+      throw new Error('Video generation timed out');
+    }
+
+    // 6. Check for safety filters
+    if (operation?.response?.raiMediaFilteredReasons?.length) {
+      throw new Error(operation.response.raiMediaFilteredReasons[0]);
+    }
+
+    if (!operation?.response?.generatedVideos?.[0]?.video) {
+      throw new Error('No video generated');
+    }
+
+    // 7. Download video
+    const videosDir = path.resolve(process.cwd(), 'videos');
+    mkdirSync(videosDir, { recursive: true });
+
+    const fileName = `video-${Date.now()}.mp4`;
+    const filePath = path.join(videosDir, fileName);
+
+    await ai.files.download({
+      file: operation.response.generatedVideos[0].video,
+      downloadPath: filePath,
+    });
+
+    // 8. Upload to Cloudinary
+    const uploadResult = await cloudinary.uploader.upload(filePath, {
+      folder: 'ai-shorts',
+      resource_type: 'video',
+    });
+
+    // 9. Cleanup
+    await fs.promises.unlink(filePath).catch(() => {});
+    await fs.promises.rmdir(videosDir).catch(() => {});
+
+    logger.info('✅ Video generated and uploaded successfully');
+    return uploadResult.secure_url;
+  } catch (error) {
+    logger.error('Video generation failed:', error);
+    throw new Error('Failed to generate video');
+  }
+};
