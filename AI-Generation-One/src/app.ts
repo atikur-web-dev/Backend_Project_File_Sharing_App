@@ -11,6 +11,7 @@ import { errorHandler } from './middleware/errorHandler.js';
 import { healthCheck } from './controllers/health.controller.js';
 import { projectRouter } from './routes/project.route.js';
 import { apiLimiter, aiLimiter } from './config/rate-limit.js';
+import { errorHandler } from './middleware/error.middleware.js';
 
 const app: Application = express();
 
@@ -81,6 +82,5 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 
 
 app.use(errorHandler);
-
 
 export { app };
