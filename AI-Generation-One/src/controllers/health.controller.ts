@@ -1,25 +1,24 @@
-import type { Request, Response } from 'express';
+import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { config } from '../config/index.js';
-import { logger } from '../config/logger.js';
 
 export const healthCheck = async (req: Request, res: Response) => {
   try {
-    // Check database connection
+    // Check database
     await prisma.$queryRaw`SELECT 1`;
-
+    
     res.json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       environment: config.NODE_ENV,
+      version: process.env.npm_package_version || '1.0.0',
       services: {
         database: 'connected',
-        server: 'running',
+        redis: process.env.REDIS_URL ? 'connected' : 'not configured',
       },
     });
   } catch (error) {
-    logger.error('Health check failed:', error);
     res.status(503).json({
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
