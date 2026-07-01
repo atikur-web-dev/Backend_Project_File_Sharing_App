@@ -4,6 +4,9 @@ import { uploadToCloudinary } from '../services/cloudinary.service.js';
 import { prisma } from '../lib/prisma.js';
 import { logger } from '../config/logger.js';
 import { unlink } from 'fs/promises';
+import { CreditService } from '../services/credit.service.js';
+import { generateVideoWithAI } from '../services/ai.service.js';
+
 
 export const createProject = async (req: Request, res: Response) => {
   let creditDeducted = false;
@@ -110,38 +113,35 @@ export const createProject = async (req: Request, res: Response) => {
 };
 
 // ============ Video Generation Controller ============
-
-import { generateVideoWithAI } from '../services/ai.service.js';
-
 export const generateVideo = async (req: Request, res: Response) => {
   const userId = req.user?.id;
   const { projectId } = req.body;
 
+  // 1. Validation
   if (!userId) {
     return res.status(401).json({ success: false, message: 'Unauthorized' });
   }
 
-  if (!projectId) {
-    return res.status(400).json({ success: false, message: 'Project ID required' });
+  if (!projectId || typeof projectId !== 'string') {
+    return res.status(400).json({
+      success: false,
+      message: 'Project ID is required and must be a string',
+    });
   }
 
   let creditDeducted = false;
 
   try {
-    // 1. Get user with subscription
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { userSubscription: true },
-    });
-
-    if (!user?.userSubscription || user.userSubscription.credits < 10) {
+    // 2. Check credits (10 credits needed)
+    const hasCredits = await CreditService.checkCredits(userId, 10);
+    if (!hasCredits) {
       return res.status(400).json({
         success: false,
         message: 'Insufficient credits. Need 10 credits for video generation.',
       });
     }
 
-    // 2. Get project
+    // 3. Get project (with ownership check)
     const project = await prisma.project.findUnique({
       where: { id: projectId, userId },
     });
@@ -149,47 +149,46 @@ export const generateVideo = async (req: Request, res: Response) => {
     if (!project) {
       return res.status(404).json({
         success: false,
-        message: 'Project not found',
+        message: 'Project not found or you do not have access',
       });
     }
 
+    // 4. Idempotency check - prevent duplicate generation
     if (project.generatedVideo) {
       return res.status(400).json({
         success: false,
         message: 'Video already generated for this project',
+        data: { videoUrl: project.generatedVideo },
       });
     }
 
-    // 3. Deduct credits
-    await prisma.userSubscription.update({
-      where: { id: user.userSubscription.id },
-      data: { credits: { decrement: 10 } },
-    });
+    // 5. Deduct credits
+    await CreditService.deductCredits(userId, 10);
     creditDeducted = true;
 
-    // 4. Generate video
+    // 6. Generate video
     const videoUrl = await generateVideoWithAI(project);
 
-    // 5. Update project
+    // 7. Update project
     const updatedProject = await prisma.project.update({
       where: { id: projectId },
       data: { generatedVideo: videoUrl },
     });
 
+    // 8. Success response
     res.json({
       success: true,
+      message: 'Video generated successfully',
       data: updatedProject,
     });
   } catch (error) {
-    // Refund credits if failed
+    // 9. Refund credits on failure
     if (creditDeducted) {
-      await prisma.userSubscription.update({
-        where: { userId },
-        data: { credits: { increment: 10 } },
-      });
+      await CreditService.refundCredits(userId, 10);
+      logger.info(`🔄 Credits refunded for user ${userId} (video failed)`);
     }
 
-    logger.error('Video generation failed:', error);
+    logger.error('Video generation error:', error);
     res.status(500).json({
       success: false,
       message: error instanceof Error ? error.message : 'Video generation failed. Credits refunded.',

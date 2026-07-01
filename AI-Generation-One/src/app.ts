@@ -10,6 +10,7 @@ import { authRouter } from './routes/auth.route.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { healthCheck } from './controllers/health.controller.js';
 import { projectRouter } from './routes/project.route.js';
+import { apiLimiter, aiLimiter } from './config/rate-limit.js';
 
 const app: Application = express();
 
@@ -64,6 +65,8 @@ app.use((req: Request, res: Response) => {
 app.use('/api/v1', authRouter);
 app.get('/health', healthCheck);
 app.use('/api/v1', projectRouter);
+app.use('/api', apiLimiter);
+app.use('/api/v1/projects', aiLimiter);
 
 // =============== গ্লোবাল এরর হ্যান্ডলার ===============
 

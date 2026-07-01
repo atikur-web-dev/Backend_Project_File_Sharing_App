@@ -8,6 +8,12 @@ import { convertToBase64 } from '../utils/image.helper.js';
 import { uploadBufferToCloudinary } from './cloudinary.service.js';
 import { logger } from '../config/logger.js';
 import type { Express } from 'express';
+import { mkdirSync, rmSync } from 'fs';
+import path from 'path';
+import axios from 'axios';
+import { cloudinary } from '../lib/cloudinary.js';
+import { logger } from '../config/logger.js';
+import type { Project } from '@prisma/client';
 
 interface GenerateImageInput {
   userPrompt?: string;
@@ -99,26 +105,25 @@ export const generateImageWithAI = async (
 
 // ============ Video Generation ============
 
-import axios from 'axios';
-import { mkdirSync } from 'fs';
-import path from 'path';
-import { cloudinary } from '../lib/cloudinary.js';
-import { logger } from '../config/logger.js';
-import type { Project } from '@prisma/client';
+const VIDEO_POLL_INTERVAL = 10000; // 10 seconds
+const MAX_POLL_ATTEMPTS = 30; // 5 minutes
 
 export const generateVideoWithAI = async (project: Project): Promise<string> => {
   try {
-    // 1. Build prompt
-    const prompt = `Make the person showcase the product which is ${project.productName}. ${project.productDescription || ''}`;
-    
-    // 2. Get the generated image
+    logger.info(`🎬 Starting video generation for project: ${project.id}`);
+
+    // 1. Validate
     if (!project.generatedImage) {
-      throw new Error('Generated image not found. Please generate image first.');
+      throw new Error('Generated image not found. Generate image first.');
     }
 
-    // 3. Download the image
+    // 2. Build prompt
+    const prompt = `Show the person holding the ${project.productName} naturally. Professional studio lighting. E-commerce style. ${project.productDescription || ''}`;
+
+    // 3. Download image
     const imageResponse = await axios.get(project.generatedImage, {
       responseType: 'arraybuffer',
+      timeout: 30000,
     });
     const imageBuffer = Buffer.from(imageResponse.data);
 
@@ -137,21 +142,19 @@ export const generateVideoWithAI = async (project: Project): Promise<string> => 
       },
     });
 
-    // 5. Poll for completion (max 5 minutes)
-    const maxAttempts = 30; // 30 * 10s = 5 minutes
+    // 5. Poll for completion
     let attempts = 0;
-    
-    while (!operation.done && attempts < maxAttempts) {
-      await new Promise((resolve) => setTimeout(resolve, 10000));
+    while (!operation.done && attempts < MAX_POLL_ATTEMPTS) {
+      await new Promise((resolve) => setTimeout(resolve, VIDEO_POLL_INTERVAL));
       operation = await ai.operations.getVideosOperation({
         operation: operation,
       });
       attempts++;
-      logger.info(`⏳ Video generation progress: ${attempts * 10}s`);
+      logger.info(`⏳ Video progress: ${attempts * 10}s`);
     }
 
     if (!operation.done) {
-      throw new Error('Video generation timed out');
+      throw new Error('Video generation timed out after 5 minutes');
     }
 
     // 6. Check for safety filters
@@ -167,7 +170,7 @@ export const generateVideoWithAI = async (project: Project): Promise<string> => 
     const videosDir = path.resolve(process.cwd(), 'videos');
     mkdirSync(videosDir, { recursive: true });
 
-    const fileName = `video-${Date.now()}.mp4`;
+    const fileName = `video-${Date.now()}-${project.id}.mp4`;
     const filePath = path.join(videosDir, fileName);
 
     await ai.files.download({
@@ -177,18 +180,25 @@ export const generateVideoWithAI = async (project: Project): Promise<string> => 
 
     // 8. Upload to Cloudinary
     const uploadResult = await cloudinary.uploader.upload(filePath, {
-      folder: 'ai-shorts',
+      folder: 'ai-shorts/videos',
       resource_type: 'video',
+      public_id: `video-${project.id}`,
     });
 
     // 9. Cleanup
-    await fs.promises.unlink(filePath).catch(() => {});
-    await fs.promises.rmdir(videosDir).catch(() => {});
+    try {
+      rmSync(filePath, { force: true });
+      rmSync(videosDir, { recursive: true, force: true });
+    } catch (cleanupError) {
+      logger.warn('⚠️ Video cleanup warning:', cleanupError);
+    }
 
-    logger.info('✅ Video generated and uploaded successfully');
+    logger.info(`✅ Video generated: ${uploadResult.secure_url}`);
     return uploadResult.secure_url;
   } catch (error) {
-    logger.error('Video generation failed:', error);
-    throw new Error('Failed to generate video');
+    logger.error('❌ Video generation failed:', error);
+    throw new Error(
+      error instanceof Error ? error.message : 'Failed to generate video'
+    );
   }
 };
